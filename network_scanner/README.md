@@ -27,7 +27,7 @@ Instead of checking hosts one by one (synchronously), which can take minutes, th
 1. **Clone the repository:**
 ```bash
 git clone https://github.com
-cd async-network-scanner
+cd network-scanner
 ```
 
 2. **Install dependencies:**
