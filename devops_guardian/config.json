@@ -1,0 +1,7 @@
+{
+    "BOT_TOKEN": "",
+    "CHAT_ID": "",
+    "LOGS_DIR": "./test_logs",
+    "BACKUPS_DIR": "./backups",
+    "BACKUP_RETENTION": "7"
+}
