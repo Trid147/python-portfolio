@@ -41,7 +41,7 @@ class Noun(TatarWord):
 
         plural_word = self.word + suffix
         if self.original_word.istitle():
-             return plural_word.capitalize()
+            return plural_word.capitalize()
         return plural_word
 
     def add_possession(self, person, is_plural_owner=False):
@@ -91,7 +91,7 @@ class Noun(TatarWord):
         result_word = base_word + suffix
 
         if self.original_word.istitle():
-             return result_word.capitalize()
+            return result_word.capitalize()
         return result_word
 
     def add_case(self, case_type):
@@ -128,7 +128,7 @@ class Noun(TatarWord):
             
         result_word = self.word + suffix
         if self.original_word.istitle():
-             return result_word.capitalize()
+            return result_word.capitalize()
         return result_word
 
 
@@ -243,8 +243,61 @@ class Verb(TatarWord):
             result += person_suffix
 
         if self.original_word.istitle():
-             return result.capitalize()
+            return result.capitalize()
         return result
+
+class Numeral(TatarWord):
+    def __init__(self, word):
+        super().__init__(word)
+        self.last_char = self.word[-1]
+        self.suffix = ""
+
+    vowels = ['а', 'ә', 'е', 'ё', 'и', 'о', 'ө', 'у', 'ү', 'ы', 'э', 'ю', 'я']
+    consonants = ['б', 'в', 'г', 'д', 'ж', 'җ', 'з', 'й', 'к', 'л', 'м', 'н', 'ң', 'п', 'р', 'с', 'т', 'ф', 'х', 'һ', 'ц', 'ч', 'ш', 'щ']
+
+    def set_category(self, category):
+        if category == 'ordinal':
+            return self.set_ordinal()
+        elif category == 'collective':
+            return self.set_collective()
+        elif category == 'distributive':
+            return self.set_distributive()
+
+    def set_ordinal(self):
+        if self.last_char in self.vowels:
+            self.suffix = "нчы" if self.is_hard else "нче"
+        elif self.last_char in self.consonants:
+            self.suffix = "ынчы" if self.is_hard else "енче"
+
+        result_word = self.word + self.suffix
+        if self.original_word.istitle():
+            return result_word.capitalize()
+        return result_word
+
+    def set_collective(self):
+        base_word = self.word
+
+        if self.last_char in self.vowels:
+            base_word = base_word[:-1]
+
+        self.suffix = "ау" if self.is_hard else "әү"
+
+        result_word = base_word + self.suffix
+        if self.original_word.istitle():
+            return result_word.capitalize()
+        return result_word
+
+    def set_distributive(self):
+        if self.last_char in self.vowels:
+            self.suffix = "шар" if self.is_hard else "шәр"
+        elif self.last_char in self.consonants:
+            self.suffix = "ар" if self.is_hard else "әр"
+
+        result_word = self.word + self.suffix
+        if self.original_word.istitle():
+            return result_word.capitalize()
+        return result_word
+            
 
 
 if __name__ == "__main__":
@@ -253,7 +306,7 @@ if __name__ == "__main__":
     print(Fore.RED + "======================================================\n")
 
     while True:
-        print("Доступные части речи: noun, verb")
+        print("Доступные части речи: noun, verb, numeral")
         pos = input("Введите часть речи (или 'exit' для выхода): ").strip().lower()
 
         if pos == 'exit':
@@ -262,7 +315,7 @@ if __name__ == "__main__":
             break
 
         if pos == "noun":
-            word_input = input("Введите слово: ").strip()
+            word_input = input("Введите существительное: ").strip()
             
             print("\nВведите аргументы через запятую: [множ. число], [принадлежность], [падеж]")
             print("Пример: true, my, in")
@@ -353,11 +406,34 @@ if __name__ == "__main__":
                     result = result.capitalize()
 
             print(Fore.GREEN + f"\nГотовое слово: {result}")
-            print(Fore.CYAN + f"   (Корень: '{current_verb.stem}')\n")
             input("Нажмите любую клавишу чтобы продолжить...")
             ClearConsole()
 
         elif pos == "numeral":
-            print(f"Часть речи '{pos}' находится в разработке.\n")
+            word_input = input("Введите числительное: ").strip()
+            
+            print("\nВведите аргументы через запятую: [разряд]")
+            print("Пример: distributive")
+            args_input = input(Fore.CYAN + "> ").strip()
+
+            args = [arg.strip().lower() for arg in args_input.split(",")]
+ 
+            category_arg = args[0] if len(args) > 0 else "none"
+
+            current_numeral = Numeral(word_input)
+
+            result = current_numeral.original_word
+
+            if category_arg:
+                category_map = ["ordinal", "collective", "distributive"]
+
+                if category_arg in category_map:
+                    print(category_arg)
+                    result = current_numeral.set_category(category_arg)
+
+
+            print(Fore.GREEN + f"\nГотовое слово: {result}")
+            input("Нажмите любую клавишу чтобы продолжить...")
+            ClearConsole()
         else:
             print(Fore.RED + "Неизвестная часть речи. Попробуйте снова.\n")

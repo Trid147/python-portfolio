@@ -1,4 +1,4 @@
-from tatar_gen import Noun, Verb
+from tatar_gen import Noun, Verb, Numeral
 
 #noun tests
 
@@ -24,3 +24,9 @@ def test_verb_stem_extraction():
 def test_verb_past_tense():
     verb = Verb("язарга")
     assert verb.add_tense("past", 1, is_plural=False) == "яздым"
+
+# numeral tests
+
+def test_numeral_ordinal():
+    numeral = Numeral("өч")
+    assert numeral.set_category("ordinal")
