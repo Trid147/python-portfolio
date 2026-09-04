@@ -29,4 +29,12 @@ def test_verb_past_tense():
 
 def test_numeral_ordinal():
     numeral = Numeral("өч")
-    assert numeral.set_category("ordinal")
+    assert numeral.set_category("ordinal") == "өченче"
+
+def test_numeral_collective():
+    numeral = Numeral("ун")
+    assert numeral.set_category("collective") == "унау"
+
+def test_numeral_distributive():
+    numeral = Numeral("илле биш")
+    assert numeral.set_category("distributive") == "илле бишәр"
