@@ -71,7 +71,7 @@ Argument format: `[negative], [tense], [person]`
 
 ## 📈 Roadmap
 
-- [ ] Implement the `numeral` part of speech module.
+- [x] Implement the `numeral` part of speech module.
 - [ ] Expand the verb database to support exceptional vowel stem extractions.
 - [ ] Add unit tests for complex phonetic edge-cases.
 
