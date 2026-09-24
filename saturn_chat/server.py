@@ -2,7 +2,10 @@ import socket
 import threading
 import hashlib
 import json
+import time
+import os
 from pathlib import Path
+from datetime import datetime
 
 HOST = ''
 PORT = 5731
@@ -17,6 +20,9 @@ client_locks = threading.Lock()
 users = {}
 user_locks = threading.Lock()
 
+active_users = {}
+active_users_locks = threading.Lock()
+
 if not database.exists():
     with open(database, 'w', encoding='utf-8') as file:
         json.dump({}, file)
@@ -28,6 +34,53 @@ with open(database, 'r', encoding='utf-8') as file:
     users = json.load(file)
 
 history_lock = threading.Lock()
+
+start_time = 0
+
+def process_command(client, username, command, args):
+    if command == '/w':
+        error_message = 'Wrong format. Usage: "/w [username] [message]"\n'
+        if len(args) >= 2:
+            target_user = args[0]
+            private_message = ' '.join(args[1:])
+            if active_users.get(target_user):
+                target_socket = active_users.get(target_user)
+                formatted_message = f'PM from {username}: {private_message}\n'
+                target_socket.sendall(formatted_message.encode('utf-8'))
+            else:
+                client.sendall(error_message.encode('utf-8'))
+        else:
+            client.sendall(error_message.encode('utf-8'))
+    elif command == '/password':
+        error_message = 'Wrong format. Usage: "/password [old_password] [new_password]"\n'
+        if len(args) == 2:
+            old_password = args[0]
+            new_password = args[1]
+
+            if get_password_hash(old_password) == users.get(username):
+                with user_locks:
+                    users[username] = get_password_hash(new_password)
+                    with open(database, 'w', encoding='utf-8') as file:
+                        json.dump(users, file, ensure_ascii=False, indent=4)
+                client.sendall('Password changed successfully.\n'.encode('utf-8'))
+            else:
+                client.sendall('Wrong old password.\n'.encode('utf-8'))
+        else:
+            client.sendall(error_message.encode('utf-8'))
+    elif command == '/uptime':
+        global start_time
+        running_time = int(time.time() - start_time)
+        client.sendall(f'Server running for {running_time} seconds.\n'.encode('utf-8'))
+    elif command == '/ping':
+        client.sendall(f'Pong!\n'.encode('utf-8'))
+    elif command == '/online':
+        online_list = ['Users online:\n']
+        for user in active_users:
+            online_list.append(f'{user}\n')
+        online_string = ''.join(online_list)
+        client.sendall(online_string.encode('utf-8'))
+    elif command == '/clear':
+        client.sendall(b'\033[2J\033[H')
 
 def get_password_hash(password):
     '''hashing password for total security of database'''
@@ -82,14 +135,18 @@ def handle_client(client_socket, client_address):
 
         username = user
 
+        with active_users_locks:
+            active_users[username] = client_socket
+
         with history_lock:
             with open(messages_history, 'r', encoding='utf-8') as file:
-                with open(messages_history, 'r', encoding='utf-8') as file:
-                    clean_lines = [line.strip().replace('"', '') for line in file if line.strip()]
-                    raw_messages_history = '\n'.join(clean_lines)
+                clean_lines = [line.strip().replace('"', '') for line in file if line.strip()]
 
-        if raw_messages_history:
-            client_socket.sendall(f'{raw_messages_history}\n'.encode('utf-8'))
+        if clean_lines:
+            for line in clean_lines:
+                client_socket.sendall(f'{line}\n'.encode('utf-8'))
+
+        client_socket.sendall(f'<END_OF_HISTORY>\n'.encode('utf-8'))
 
         with client_locks:
             clients.append(client_socket)
@@ -105,7 +162,15 @@ def handle_client(client_socket, client_address):
                 break
 
             message = data.decode('utf-8')
-            print(f'[{username}]: {message}')
+
+            if message.startswith('/'):
+                parts = message.split()
+                command = parts[0].lower()
+                args = parts[1:]
+                process_command(client_socket, username, command, args)
+                continue
+            else:
+                print(f'[{username}]: {message} [{datetime.now()}]')
 
             chat_message = f'[{username}]: {message}'
             broadcast(chat_message, client_socket)
@@ -123,10 +188,13 @@ def handle_client(client_socket, client_address):
         client_socket.close()
 
         if username:
+            with active_users_locks:
+                if username in active_users:
+                    del active_users[username]
             broadcast(f'User {username} left the chat.', None)
             print(f'Client {username} disconnected.')
         else:
-            print(f'Unautheficated client {client_address} disconnected.')
+            print(f'Unauthenticated client {client_address} disconnected.')
 
 
 def start_server():
@@ -136,6 +204,9 @@ def start_server():
     server.listen()
 
     print(f'Server started with port: {PORT}')
+
+    global start_time
+    start_time = time.time()
 
     while True:
         client_socket, client_address = server.accept()

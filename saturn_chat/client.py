@@ -39,7 +39,16 @@ def main():
         client.close()
         return
 
-    print(client.recv(1024).decode('utf-8'))
+    while True:
+        chunk = client.recv(1024).decode('utf-8')
+
+        if '<END_OF_HISTORY>\n' in chunk:
+            final_text = chunk.replace('<END_OF_HISTORY>\n', '')
+            sys.stdout.write(final_text)
+            break
+
+        sys.stdout.write(chunk)
+        sys.stdout.flush()
 
     receive_thread = threading.Thread(target=receive_messages, args=(client,), daemon=True)
     receive_thread.start()
@@ -47,8 +56,6 @@ def main():
     try:
         while True:
             message = input('You: ')
-            if message.lower().strip() == 'exit':
-                break
             if message.strip():
                 client.sendall(message.encode('utf-8'))
     finally:
