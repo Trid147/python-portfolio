@@ -1,4 +1,4 @@
-# 🪐 Saturn Chat (v1.0)
+# 🪐 Saturn Chat (v1.1)
 
 Saturn Chat is a lightweight, asynchronous, and hyper-anonymous console-based chat application built using Python's native `socket` and `threading` libraries. 
 
