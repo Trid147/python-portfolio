@@ -2,7 +2,7 @@ import socket
 import threading
 import sys
 
-SERVER_IP = '192.168.0.108'
+SERVER_IP = '192.168.0.111' #your server ip
 PORT = 5731
 
 def receive_messages(client_socket):
