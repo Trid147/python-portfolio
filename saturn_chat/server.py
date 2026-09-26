@@ -3,7 +3,6 @@ import threading
 import hashlib
 import json
 import time
-import os
 from pathlib import Path
 from datetime import datetime
 
@@ -101,111 +100,128 @@ def process_command(client, username, command, args):
         client.sendall(b'\033[2J\033[H')
     elif command == '/room':
         error_message = 'Wrong format. Usage: "/room create/delete/join/leave/setpass [room_name]"\n'
-        if len(args) >= 2 and args[0].isalnum() and args[1].isalnum():
+        if args:
             subcommand = args[0]
-            room_name = args[1]
-            room_code = args[2] if len(args) > 2 else None
-            room_password = args[3] if len(args) > 3 else None
-            new_password = args[4] if len(args) > 4 else None
-            if (not room_code or room_code.isalnum()) and (not room_password or room_password.isalnum()) and (not new_password or new_password.isalnum()):
-                with room_locks:
-                    if subcommand == 'create':
-                        error_message = 'Wrong format. Usage: "/room create [name] [code] [password]"\n'
-                        if not room_code or not room_password:
-                            client.sendall(error_message.encode('utf-8'))
-                            return
-                        
-                        active_rooms[room_name] = {'code': get_password_hash(room_code), 'password': get_password_hash(room_password), 'members': [username]}
-                        with open(rooms, 'w', encoding='utf-8') as file:
-                            json.dump(active_rooms, file, ensure_ascii=False, indent=4)
-                        with user_location_locks:
-                            user_locations[username] = room_name
-                        client.sendall(f'Room {room_name} successfully created.\n'.encode('utf-8'))
-                    elif subcommand == 'delete':
-                        error_message = 'Wrong format. Usage: "/room delete [name] [code] [password]"\n'
-                        if not room_code or not room_password:
-                            client.sendall(error_message.encode('utf-8'))
-                            return
-                        
-                        room = active_rooms.get(room_name)
-                        if room:
-                            if room['password'] == get_password_hash(room_password):
-                                del active_rooms[room_name]
-                                with open(rooms, 'w', encoding='utf-8') as file:
-                                    json.dump(active_rooms, file, ensure_ascii=False, indent=4)
-                                with user_location_locks:
-                                    for user, location in list(user_locations.items()):
-                                        if location == room_name:
-                                            del user_locations[user]
-                                with history_lock:
-                                    history_file = room_histories_dir / f'room_history_{room_name}.jsonl'
-                                    if history_file.exists():
-                                        history_file.unlink()
-                                client.sendall(f'Room {room_name} successfully deleted.\n'.encode('utf-8'))
-                            else:
-                                client.sendall('Wrong room password.\n'.encode('utf-8')) 
-                        else:
-                            client.sendall(f'Room with name: {room_name} not found.\n'.encode('utf-8'))
-                    elif subcommand == 'join':
-                        error_message = 'Wrong format. Usage: "/room join [name] [code]"\n'
-                        if not room_code:
-                            client.sendall(error_message.encode('utf-8'))
-                            return
-                        
-                        room = active_rooms.get(room_name)
-                        if room:
-                            if room['code'] == get_password_hash(room_code):
-                                active_rooms[room_name]['members'].append(username)
-                                with user_location_locks:
-                                    user_locations[username] = room_name
-                                client.sendall(f'You successfully joined {room_name} room.\n'.encode('utf-8'))
-
+            with room_locks:
+                if subcommand == 'create':
+                    error_message = 'Wrong format. Usage: "/room create [name] [code] [password]"\n'
+                    room_name = args[1] if len(args) > 1 else None
+                    room_code = args[2] if len(args) > 2 else None
+                    room_password = args[3] if len(args) > 3 else None
+                    if not room_name or not room_code or not room_password:
+                        client.sendall(error_message.encode('utf-8'))
+                        return
+                    
+                    active_rooms[room_name] = {'code': get_password_hash(room_code), 'password': get_password_hash(room_password), 'members': [username]}
+                    with open(rooms, 'w', encoding='utf-8') as file:
+                        json.dump(active_rooms, file, ensure_ascii=False, indent=4)
+                    with user_location_locks:
+                        user_locations[username] = room_name
+                    client.sendall(f'Room {room_name} successfully created.\n'.encode('utf-8'))
+                elif subcommand == 'delete':
+                    room_name = args[1] if len(args) > 1 else None
+                    room_password = args[2] if len(args) > 2 else None
+                    error_message = 'Wrong format. Usage: "/room delete [name] [password]"\n'
+                    if not room_name or not room_password:
+                        client.sendall(error_message.encode('utf-8'))
+                        return
+                    
+                    room = active_rooms.get(room_name)
+                    if room:
+                        if room['password'] == get_password_hash(room_password):
+                            del active_rooms[room_name]
+                            with open(rooms, 'w', encoding='utf-8') as file:
+                                json.dump(active_rooms, file, ensure_ascii=False, indent=4)
+                            with user_location_locks:
+                                for user, location in list(user_locations.items()):
+                                    if location == room_name:
+                                        del user_locations[user]
+                            with history_lock:
                                 history_file = room_histories_dir / f'room_history_{room_name}.jsonl'
                                 if history_file.exists():
-                                    with history_lock:
-                                        with open(history_file, 'r', encoding='utf-8') as hist_file:
-                                            for line in hist_file:
-                                                if line.strip():
-                                                    client.sendall(f"{line.strip().replace('"', '')}\n".encode('utf-8'))
-                            else:
-                                client.sendall('Wrong room code.\n'.encode('utf-8')) 
+                                    history_file.unlink()
+                            client.sendall(f'Room {room_name} successfully deleted.\n'.encode('utf-8'))
                         else:
-                            client.sendall(f'Room with name: {room_name} not found.\n'.encode('utf-8'))
-                    elif subcommand == 'leave':
-                        room = active_rooms.get(room_name)
-                        if room:
-                            for user in active_rooms[room_name]['members']:
-                                if user == username:
-                                    active_rooms[room_name]['members'].remove(user)
-                                    with user_location_locks:
-                                        if username in user_locations:
-                                            del user_locations[username]
-                                    client.sendall(f'You successfully left {room_name} room.\n'.encode('utf-8'))
-                        else:
-                            client.sendall(f'Room with name: {room_name} not found.\n'.encode('utf-8'))
-                    elif subcommand == 'setpass':
-                        error_message = 'Wrong format. Usage: "/room setpass [name] [code] [old_password] [new_password]"\n'
-                        if not room_code or not room_password or not new_password:
-                            client.sendall(error_message.encode('utf-8'))
-                            return
+                            client.sendall('Wrong room password.\n'.encode('utf-8')) 
+                    else:
+                        client.sendall(f'Room with name: {room_name} not found.\n'.encode('utf-8'))
+                elif subcommand == 'join':
+                    room_name = args[1] if len(args) > 1 else None
+                    room_code = args[2] if len(args) > 2 else None
+                    error_message = 'Wrong format. Usage: "/room join [name] [code]"\n'
+                    if not room_name or not room_code:
+                        client.sendall(error_message.encode('utf-8'))
+                        return
+                    
+                    room = active_rooms.get(room_name)
+                    if room:
+                        if room['code'] == get_password_hash(room_code):
+                            active_rooms[room_name]['members'].append(username)
+                            with open(rooms, 'w', encoding='utf-8') as file:
+                                json.dump(active_rooms, file, ensure_ascii=False, indent=4)
+                            with user_location_locks:
+                                user_locations[username] = room_name
+                            client.sendall(f'You successfully joined {room_name} room.\n'.encode('utf-8'))
 
-                        room = active_rooms.get(room_name)
-                        if room:
-                            if room['password'] == get_password_hash(room_password):
-                                active_rooms[room_name]['password'] = get_password_hash(new_password)
-                                
+                            history_file = room_histories_dir / f'room_history_{room_name}.jsonl'
+                            if history_file.exists():
+                                with history_lock:
+                                    with open(history_file, 'r', encoding='utf-8') as hist_file:
+                                        for line in hist_file:
+                                            if line.strip():
+                                                try:
+                                                    original_message = json.loads(line.strip())
+                                                    client.sendall(f"{original_message}\n".encode('utf-8'))
+                                                except Exception:
+                                                    client.sendall(f"{line.strip()}\n".encode('utf-8'))
+                        else:
+                            client.sendall('Wrong room code.\n'.encode('utf-8')) 
+                    else:
+                        client.sendall(f'Room with name: {room_name} not found.\n'.encode('utf-8'))
+                elif subcommand == 'leave':
+                    room_name = args[1] if len(args) > 1 else None
+                    error_message = 'Wrong format. Usage: "/room leave [name]"\n'
+                    if not room_name:
+                        client.sendall(error_message.encode('utf-8'))
+                        return
+                    
+                    room = active_rooms.get(room_name)
+                    if room:
+                        for user in active_rooms[room_name]['members']:
+                            if user == username:
+                                active_rooms[room_name]['members'].remove(user)
                                 with open(rooms, 'w', encoding='utf-8') as file:
                                     json.dump(active_rooms, file, ensure_ascii=False, indent=4)
-                                    
-                                client.sendall('You successfully changed room password.\n'.encode('utf-8'))
-                            else:
-                                client.sendall('Wrong room password.\n'.encode('utf-8')) 
-                        else:
-                            client.sendall(f'Room with name: {room_name} not found.\n'.encode('utf-8'))
+                                with user_location_locks:
+                                    if username in user_locations:
+                                        del user_locations[username]
+                                client.sendall(f'You successfully left {room_name} room.\n'.encode('utf-8'))
                     else:
+                        client.sendall(f'Room with name: {room_name} not found.\n'.encode('utf-8'))
+                elif subcommand == 'setpass':
+                    room_name = args[1] if len(args) > 1 else None
+                    room_password = args[2] if len(args) > 2 else None
+                    new_password = args[3] if len(args) > 3 else None
+                    error_message = 'Wrong format. Usage: "/room setpass [name] [old_password] [new_password]"\n'
+                    if not room_name or not room_password or not new_password:
                         client.sendall(error_message.encode('utf-8'))
-            else:
-                client.sendall(error_message.encode('utf-8'))
+                        return
+
+                    room = active_rooms.get(room_name)
+                    if room:
+                        if room['password'] == get_password_hash(room_password):
+                            active_rooms[room_name]['password'] = get_password_hash(new_password)
+                            
+                            with open(rooms, 'w', encoding='utf-8') as file:
+                                json.dump(active_rooms, file, ensure_ascii=False, indent=4)
+                                
+                            client.sendall('You successfully changed room password.\n'.encode('utf-8'))
+                        else:
+                            client.sendall('Wrong room password.\n'.encode('utf-8')) 
+                    else:
+                        client.sendall(f'Room with name: {room_name} not found.\n'.encode('utf-8'))
+                else:
+                    client.sendall(error_message.encode('utf-8'))
         else:
             client.sendall(error_message.encode('utf-8'))
     else:
@@ -339,7 +355,22 @@ def handle_client(client_socket, client_address):
             with active_users_locks:
                 if username in active_users:
                     del active_users[username]
-            broadcast(f'User {username} left the chat.', None, current_room)
+
+            with user_location_locks:
+                actual_room = user_locations.get(username)
+                if username in user_locations:
+                    del user_locations[username]
+
+            if actual_room:
+                with room_locks:
+                    if actual_room in active_rooms:
+                        if username in active_rooms[actual_room]['members']:
+                            active_rooms[actual_room]['members'].remove(username)
+
+                            with open(rooms, 'w', encoding='utf-8') as file:
+                                json.dump(active_rooms, file, ensure_ascii=False, indent=4)
+
+            broadcast(f'User {username} left the chat.', None, actual_room)
             print(f'Client {username} disconnected.')
         else:
             print(f'Unauthenticated client {client_address} disconnected.')
