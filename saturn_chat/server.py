@@ -224,6 +224,19 @@ def process_command(client, username, command, args):
                     client.sendall(error_message.encode('utf-8'))
         else:
             client.sendall(error_message.encode('utf-8'))
+    elif command == '/help':
+        help_info = [
+            '/w - send private message to user',
+            '/password - change account password',
+            '/uptime - check server work time',
+            '/ping - standard command to check connection',
+            '/online - show list of online users',
+            '/clear - clear output',
+            '/room - handle rooms',
+            '/help - show list of all commands'
+        ]
+        message = '\n'.join(help_info)
+        client.sendall(message.encode('utf-8'))
     else:
         client.sendall(f'"{command}" is not a valid command.\n'.encode('utf-8'))
 

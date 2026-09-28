@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 import socket
 import threading
 import sys
@@ -6,17 +7,20 @@ import base64
 import socks
 from cryptography.fernet import Fernet
 
-SERVER_ONION = 'xyzxwoexvdzddlbhk5nfwdq65yqhb3rrtls3zu7y6eyhp4r4dx3nqiqd.onion' #your server onion adress
+SERVER_ONION = 'libuak4rdz6mkkwghs3svwuw3u5fvfbfhtdvc2dearod6mov5ej4q4yd.onion' #your server onion adress
 PORT = 5731
-
-current_room = None
-current_crypto = None
 
 def make_crypto_object(room_code: str) -> Fernet:
     '''creates fernet crypto object'''
     key_32_bytes = hashlib.sha256(room_code.encode('utf-8')).digest()
     fernet_key = base64.urlsafe_b64encode(key_32_bytes)
     return Fernet(fernet_key)
+
+MAIN_SECRET = '#saturn_key_147'
+MAIN_CRYPTO = make_crypto_object(MAIN_SECRET)
+
+current_room = None
+current_crypto = MAIN_CRYPTO
 
 def check_and_decrypt(raw_text: str) -> str:
     '''only gets crypted message and decrypts it'''
@@ -88,24 +92,29 @@ def main():
     auth_input = input(welcome_msg)
     client.sendall(auth_input.encode('utf-8'))
 
-    auth_status = client.recv(1024).decode('utf-8')
+    buffer = ""
+    while "<END_OF_HISTORY>" not in buffer:
+        chunk = client.recv(1024).decode('utf-8')
+        if not chunk:
+            break
+        buffer += chunk
+
+    parts = buffer.split('\n', 1)
+    auth_status = parts[0]
     print(auth_status)
 
     if 'ERROR' in auth_status:
         client.close()
         return
 
-    while True:
-        chunk = client.recv(1024).decode('utf-8')
+    rest_of_buffer = parts[1] if len(parts) > 1 else ""
 
-        if '<END_OF_HISTORY>\n' in chunk:
-            final_text = chunk.replace('<END_OF_HISTORY>\n', '')
-            sys.stdout.write(final_text)
-            break
+    history_data = rest_of_buffer.replace('<END_OF_HISTORY>\n', '').replace('<END_OF_HISTORY>', '')
 
-        sys.stdout.write(chunk)
+    if history_data.strip():
+        sys.stdout.write(check_and_decrypt(history_data))
         sys.stdout.flush()
-
+        
     receive_thread = threading.Thread(target=receive_messages, args=(client,), daemon=True)
     receive_thread.start()
 
@@ -125,7 +134,7 @@ def main():
                     current_crypto = make_crypto_object(parts[3])
                 elif len(parts) >= 3 and parts[1] == 'leave':
                     current_room = None
-                    current_crypto = None
+                    current_crypto = MAIN_CRYPTO
 
             if not message.startswith('/') and current_crypto:
                 encrypted_text = current_crypto.encrypt(message.encode('utf-8'))
