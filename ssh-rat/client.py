@@ -4,7 +4,7 @@ import subprocess
 import paramiko
 from pathlib import Path
 
-IP = '192.168.56.104'
+IP = '192.168.56.104' #your server ip
 PORT = 2222
 USERNAME = 'trid'
 PASSWORD = '5731'
