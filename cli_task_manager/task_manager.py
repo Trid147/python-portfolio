@@ -4,24 +4,38 @@ import argparse
 import json
 from pathlib import Path
 
+COLOR_GREEN = '\033[92m'
+COLOR_YELLOW = '\033[93m'
+COLOR_RED = '\033[91m'
+COLOR_GRAY = '\033[90m'
+COLOR_RESET = '\033[0m'
+
+priorities = {
+    1: {'text': 'HIGH', 'color': COLOR_RED},
+    2: {'text': 'MED', 'color': COLOR_YELLOW},
+    3: {'text': 'LOW', 'color': COLOR_GREEN}
+}
 
 class Task:
-    def __init__(self, id, title):
+    def __init__(self, id, title, priority):
         self.id = id
         self.title = title
+        self.priority = priority
         self.status = False
 
     def __str__(self):
         status_icon = '[+]' if self.status else '[-]'
-        return f'[{self.id}] {status_icon} {self.title}'
+        priority = priorities[self.priority]['text']
+        color = priorities[self.priority]['color'] if not self.status else COLOR_GRAY
+        return f'{color}[{self.id}] {status_icon} [{priority}] {self.title}{COLOR_RESET}'
 
 class TaskManager:
     def __init__(self):
         self.tasks = []
         self.current_id = 1
 
-    def add_task(self, text):
-        new_task = Task(self.current_id, text)
+    def add_task(self, text, priority):
+        new_task = Task(self.current_id, text, priority)
         self.tasks.append(new_task)
         self.current_id += 1
         print('Task added')
@@ -58,7 +72,7 @@ class TaskManager:
         raw_tasks = []
 
         for task in self.tasks:
-            raw_tasks.append({'id': task.id, 'title': task.title, 'status': task.status})
+            raw_tasks.append({'id': task.id, 'title': task.title, 'status': task.status, 'priority': task.priority})
 
         with open('tasks.json', 'w', encoding='utf-8') as file:
             json.dump(raw_tasks, file, ensure_ascii=False, indent=4)
@@ -71,7 +85,7 @@ class TaskManager:
             raw_tasks = json.load(file)
 
         for i in raw_tasks:
-            task = Task(i['id'], i['title'])
+            task = Task(i['id'], i['title'], i['priority'])
             task.status = i['status']
             self.tasks.append(task)
 
@@ -90,6 +104,7 @@ def main():
 
     parser_add = subparcers.add_parser('add', help='Add new task')
     parser_add.add_argument('text', type=str, help='Task text')
+    parser_add.add_argument('-p', '--priority', type=int, default=2, choices=[1, 2, 3], help='Set priority of task (1, 2, 3)')
 
     parser_list = subparcers.add_parser('list', help='List tasks')
     parser_list.add_argument('-a', '--all', action='store_true', help='List all tasks')
@@ -104,7 +119,7 @@ def main():
     args = parser.parse_args()
 
     if args.command == 'add':
-        manager.add_task(args.text)
+        manager.add_task(args.text, args.priority)
     elif args.command == 'list':
         manager.list_tasks(show_all=args.all, show_completed=args.completed)
     elif args.command == 'done':

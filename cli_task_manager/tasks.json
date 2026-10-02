@@ -1,1 +1,32 @@
-[]
+[
+    {
+        "id": 1,
+        "title": "Write new python script",
+        "status": false,
+        "priority": 1
+    },
+    {
+        "id": 2,
+        "title": "Learn new topic in math",
+        "status": false,
+        "priority": 2
+    },
+    {
+        "id": 3,
+        "title": "Do homework",
+        "status": false,
+        "priority": 3
+    },
+    {
+        "id": 4,
+        "title": "Set up server",
+        "status": true,
+        "priority": 2
+    },
+    {
+        "id": 5,
+        "title": "Touch grass",
+        "status": false,
+        "priority": 2
+    }
+]
