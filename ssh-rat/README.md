@@ -61,6 +61,6 @@ Unlike traditional reverse SSH setups that require an active `sshd` daemon runni
 The project is actively being developed. The following features are planned for future releases:
 
 - [x] **Secure File Transfer (SFTP Engine):** Native `download` and `upload` command handlers to easily exfiltrate or deliver files between the server and clients.
-- [ ] **Stealth Mode Deployment:** Integrating WinAPI compiler modifications (`pyinstaller --noconsole`) and window-hiding subroutines to run the client completely as a background service.
-- [ ] **System Persistence:** Automated registry integration (`CurrentVersion\Run`) and hidden directory staging to ensure the client automatically boots with the host OS.
-- [ ] **Interactive Dynamic Menu:** Upgrading the main menu loop to asynchronously refresh when a client drops or joins without requiring manual inputs.
+- [x] **Stealth Mode Deployment:** Integrating WinAPI compiler modifications (`pyinstaller --noconsole`) and window-hiding subroutines to run the client completely as a background service.
+- [x] **System Persistence:** Automated registry integration (`CurrentVersion\Run`) and hidden directory staging to ensure the client automatically boots with the host OS.
+- [x] **Interactive Dynamic Menu:** Upgrading the main menu loop to asynchronously refresh when a client drops or joins without requiring manual inputs.

@@ -5,6 +5,7 @@ import time
 import paramiko
 import os
 import sys
+import select
 from paramiko.common import OPEN_FAILED_ADMINISTRATIVELY_PROHIBITED, OPEN_SUCCEEDED, AUTH_SUCCESSFUL
 from pathlib import Path
 
@@ -194,48 +195,67 @@ def accept_connections(server_socket):
 
 def main_menu():
     '''function to choose what to do'''
+    last_count = -1
     while True:
         with clients_lock:
             count = len(active_clients)
-            
-        print('\n' + '-' * 50)
-            
-        print('\n===|MAIN MENU|===')
-        print('1. Show active devices list')
-        print('2. Choose active device to manage by ID')
-        print('3. Leave from server')
-        print(f'Active connections: {count}')
 
-        choice = input('Choose your option: ')
+        if count != last_count:
+            print('\033[H\033[J', end='') # ansi code to clear console
 
-        if choice == '1':
-            with clients_lock:
-                if not active_clients:
-                    print('\n[-] No active devices.')
-                else:
-                    print('\n[+] Active devices:')
-                    for c_id, info in active_clients.items():
-                        print(f'ID [{c_id}] -> {info['sys_info']} ({info['address']})')
-        elif choice == '2':
-            with clients_lock:
-                if not active_clients:
-                    print('\n[-] There is no one to manage.')
-                    continue
-            try:
-                chanid = int(input('\n[#] Select ID to manage: '))
-                current_client = active_clients.get(chanid)
-                if not current_client:
-                    print('\n[-] Incorrect ID!')
-                else:
-                    start_management(current_client)
-            except ValueError:
-                print('\n[-] Type a number!')
-        elif choice == '3':
-            print('\n[+] Server shutdown...')
-            time.sleep(3)
-            sys.exit(0)
-        else:
-            print('\n[-] Incorrect option.')
+            print('-' * 50)
+            print('===|SRAT INTERACTIVE COMMAND CENTER|===')
+            print('-' * 50)
+
+            print(f'\nActive connections: {count}')
+
+            print('\nAvailable options:')
+            print('1. Show active devices list')
+            print('2. Choose active device to manage by ID')
+            print('3. Leave from server')
+
+            print('\nChoose your option: ', end='', flush=True)
+            last_count = count
+
+        result, _, _ = select.select([sys.stdin], [], [], 2.0)
+
+        if result:
+            choice = sys.stdin.readline().strip()
+            last_count = -1
+
+            if choice == '1':
+                with clients_lock:
+                    if not active_clients:
+                        print('\n[-] No active devices.')
+                    else:
+                        print('\n[+] Active devices:')
+                        for c_id, info in active_clients.items():
+                            print(f'ID [{c_id}] -> {info['sys_info']} ({info['address']})')
+                    input('Press enter to return to menu...')
+            elif choice == '2':
+                with clients_lock:
+                    if not active_clients:
+                        print('\n[-] There is no one to manage.')
+                        input('Press enter to return to menu...')
+                        continue
+                try:
+                    chanid = int(input('\n[#] Select ID to manage: '))
+                    current_client = active_clients.get(chanid)
+                    if not current_client:
+                        print('\n[-] Incorrect ID!')
+                        input('Press enter to retry..')
+                    else:
+                        start_management(current_client)
+                except ValueError:
+                    print('\n[-] Type a number!')
+                    input('Press enter to retry..')
+            elif choice == '3':
+                print('\n[+] Server shutdown...')
+                time.sleep(3)
+                sys.exit(0)
+            else:
+                print('\n[-] Incorrect option.')
+                input('Press enter to retry..')
 
 
 def start_server():
