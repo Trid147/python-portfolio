@@ -1,2 +1,2 @@
 #!/bin/bash
-python3 secret_shield/../app/main.py
+python3 secret-shield/app/main.py
