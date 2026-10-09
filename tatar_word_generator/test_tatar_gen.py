@@ -25,6 +25,11 @@ def test_verb_past_tense():
     verb = Verb("язарга")
     assert verb.add_tense("past", 1, is_plural=False) == "яздым"
 
+def test_verb_negative():
+    verb = Verb('аша')
+    verb.make_negative() 
+    assert verb.stem == 'ашама'
+
 # numeral tests
 
 def test_numeral_ordinal():
