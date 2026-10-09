@@ -1,10 +1,16 @@
-import os
-from colorama import init, Fore, Style
-
-init(autoreset=True)
-
+#!/usr/bin/python3
 def ClearConsole():
+    import os
     os.system('cls' if os.name == 'nt' else 'clear')
+
+Colors = {
+    'RED': '\033[31m',
+    'GREEN': '\033[32m',
+    'WHITE': '\033[37m',
+    'CYAN': '\033[36m',
+    'YELLOW': '\033[33m',
+    'RESET': '\033[0m'
+}
 
 class TatarWord:
     def __init__(self, word):
@@ -301,9 +307,9 @@ class Numeral(TatarWord):
 
 
 if __name__ == "__main__":
-    print(Fore.GREEN + "======================================================")
-    print(Fore.WHITE + "Добро пожаловать в Татарский Морфологический Генератор!")
-    print(Fore.RED + "======================================================\n")
+    print(Colors['GREEN'] + "======================================================" + Colors['RESET'])
+    print(Colors['WHITE']+ "Добро пожаловать в Татарский Морфологический Генератор!" + Colors['RESET'])
+    print(Colors['RED']+ "======================================================\n" + Colors['RESET'])
 
     while True:
         print("Доступные части речи: noun, verb, numeral")
@@ -311,7 +317,7 @@ if __name__ == "__main__":
 
         if pos == 'exit':
             ClearConsole()
-            print(Fore.CYAN + "Сау бул! (До свидания!)")
+            print(Colors['CYAN'] + "Сау бул! (До свидания!)" + Colors['RESET'])
             break
 
         if pos == "noun":
@@ -319,7 +325,7 @@ if __name__ == "__main__":
             
             print("\nВведите аргументы через запятую: [множ. число], [принадлежность], [падеж]")
             print("Пример: true, my, in")
-            args_input = input(Fore.CYAN + "> ").strip()
+            args_input = input(Colors['CYAN'] + "> " + Colors['RESET']).strip()
 
             args = [arg.strip().lower() for arg in args_input.split(",")]
  
@@ -350,7 +356,7 @@ if __name__ == "__main__":
                     result = current_word.add_possession(person, is_plural_owner=is_pl)
                     current_word = Noun(result)
                 else:
-                    print(Fore.YELLOW + f"Неизвестный аргумент принадлежности '{poss_arg}'")
+                    print(Colors['YELLOW']+ f"Неизвестный аргумент принадлежности '{poss_arg}'" + Colors['RESET'])
 
             if case_arg not in ["none", "", "false"]:
                 valid_cases = ["of", "to", "acc", "in", "from"]
@@ -359,9 +365,9 @@ if __name__ == "__main__":
                     result = current_word.add_case(case_arg)
                     current_word = Noun(result)
                 else:
-                    print(Fore.YELLOW + f"Неизвестный падеж '{case_arg}'")
+                    print(Colors['YELLOW']+ f"Неизвестный падеж '{case_arg}'" + Colors['RESET'])
 
-            print(Fore.GREEN + f"\nГотовое слово: {result}\n")
+            print(Colors['GREEN'] + f"\nГотовое слово: {result}\n" + Colors['RESET'])
             input("Нажмите любую клавишу чтобы продолжить...")
             ClearConsole()
 
@@ -370,7 +376,7 @@ if __name__ == "__main__":
             
             print("\nВведите аргументы через запятую: [отрицание], [время], [лицо]")
             print("Пример: false, present, i")
-            args_input = input(Fore.CYAN + "> ").strip()
+            args_input = input(Colors['CYAN'] + "> " + Colors['RESET']).strip()
 
             args = [arg.strip().lower() for arg in args_input.split(",")]
  
@@ -398,14 +404,14 @@ if __name__ == "__main__":
                     person, is_pl = person_map[person_arg]
                     result = current_verb.add_tense(tense_arg, person, is_plural=is_pl)
                 else:
-                    print(Fore.YELLOW + f"Неизвестное лицо '{person_arg}'")
+                    print(Colors['YELLOW']+ f"Неизвестное лицо '{person_arg}'" + Colors['RESET'])
                     result = current_verb.stem
             else:
                 result = current_verb.stem
                 if current_verb.original_word.istitle():
                     result = result.capitalize()
 
-            print(Fore.GREEN + f"\nГотовое слово: {result}")
+            print(Colors['GREEN'] + f"\nГотовое слово: {result}" + Colors['RESET'])
             input("Нажмите любую клавишу чтобы продолжить...")
             ClearConsole()
 
@@ -414,7 +420,7 @@ if __name__ == "__main__":
             
             print("\nВведите аргументы через запятую: [разряд]")
             print("Пример: distributive")
-            args_input = input(Fore.CYAN + "> ").strip()
+            args_input = input(Colors['CYAN'] + "> " + Colors['RESET']).strip()
 
             args = [arg.strip().lower() for arg in args_input.split(",")]
  
@@ -432,8 +438,8 @@ if __name__ == "__main__":
                     result = current_numeral.set_category(category_arg)
 
 
-            print(Fore.GREEN + f"\nГотовое слово: {result}")
+            print(Colors['GREEN'] + f"\nГотовое слово: {result}" + Colors['RESET'])
             input("Нажмите любую клавишу чтобы продолжить...")
             ClearConsole()
         else:
-            print(Fore.RED + "Неизвестная часть речи. Попробуйте снова.\n")
+            print(Colors['RED']+ "Неизвестная часть речи. Попробуйте снова.\n" + Colors['RESET'])
