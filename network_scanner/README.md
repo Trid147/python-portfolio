@@ -26,7 +26,7 @@ Instead of checking hosts one by one (synchronously), which can take minutes, th
 
 1. **Clone the repository:**
 ```bash
-git clone https://github.com
+git clone https://github.com/Trid147/python-portfolio
 cd network-scanner
 ```
 

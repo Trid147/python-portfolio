@@ -1,4 +1,6 @@
+#!/usr/bin/env python3
 import asyncio
+import re
 import time
 from pathlib import Path
 
@@ -56,7 +58,11 @@ async def check_host(semaphore, session, host):
             output.append(f'\n{Fore.CYAN}Port: {port}')
             output.append(f'\n Status: {status}')
 
-        print(''.join(output))
+        result = (''.join(output))
+
+        print(result)
+
+        return result
 
 async def main():
     hosts = load_hosts()
@@ -68,7 +74,15 @@ async def main():
     async with aiohttp.ClientSession() as session:
         tasks = [check_host(semaphore, session, host) for host in hosts]
 
-        await asyncio.gather(*tasks)
+        all_results = await asyncio.gather(*tasks)
+
+    final_output = '\n'.join(all_results)
+
+    ansi_escape = re.compile(r'\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])')
+    clean_output = ansi_escape.sub('', final_output)
+
+    with open('scan_result.log', 'w', encoding='utf-8') as file:
+        file.write(clean_output)
 
 if __name__ == '__main__':
     start_time = time.time()
