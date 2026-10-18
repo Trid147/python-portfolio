@@ -67,7 +67,17 @@ def execute_command(command):
         cmd_output = subprocess.check_output(command, shell=True, cwd=str(current_dir), stderr=subprocess.STDOUT)
         if not cmd_output:
             cmd_output = 'Okay.\n'.encode('utf-8')
-        decoded = cmd_output.decode('utf-8', errors='ignore').strip()
+
+        if os.name == 'nt':
+            import ctypes
+            oem_code = f'cp{ctypes.windll.kernel32.GetOEMCP()}'
+            try:
+                decoded = cmd_output.decode(oem_code).strip()
+            except UnicodeDecodeError:
+                ansi_code = f'cp{ctypes.windll.kernel32.GetACP()}'
+                decoded = cmd_output.decode(ansi_code, errors='ignore').strip()
+        else:
+            decoded = cmd_output.decode('utf-8', errors='ignore').strip()
         return f'{decoded}\n'.encode('utf-8')
     except subprocess.CalledProcessError as e:
         err_output = e.output.decode('utf-8', errors='ignore').strip()
