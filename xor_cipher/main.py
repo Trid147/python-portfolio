@@ -4,29 +4,35 @@ import pyperclip
 def get_master_key():
     while True:
         try:
-            master_key = str(input('Type your master-key symbol: '))
-            if len(master_key) == 1:
+            master_key = str(input('Type your master-key: '))
+            if len(master_key) > 0 and len(master_key) <= 50:
                 return master_key
             else:
-                print('Invalid master-key! You should type only one symbol!')
+                print('Invalid master-key!')
                 continue
         except ValueError:
-            print('Invalid master-key! You should type a symbol.')
+            print('Invalid master-key!')
             continue
 
 def xor_cipher(text, key):
     crypted_chars = []
+    key_index = 0
+    key_char = ''
     if text.startswith('G# '):
         strings = text[3:].split()
         numbers = [int(string) for string in strings]
         for number in numbers:
-            crypted_char = chr(number ^ ord(key))
+            key_char = key[key_index % len(key)]
+            crypted_char = chr(number ^ ord(key_char))
             crypted_chars.append(crypted_char)
+            key_index += 1
         crypted_message = ''.join(crypted_chars)
     else:
         for char in text:
-            crypted_char = str(ord(char) ^ ord(key))
+            key_char = key[key_index % len(key)]
+            crypted_char = str(ord(char) ^ ord(key_char))
             crypted_chars.append(crypted_char)
+            key_index += 1
         crypted_message = 'G# ' + ' '.join(crypted_chars)
     return crypted_message
 

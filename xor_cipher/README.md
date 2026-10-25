@@ -48,5 +48,5 @@ To decrypt, just run the script again, paste the `G# ...` cipher string, enter t
 
 ## Future Roadmap
 
-- [ ] Support multi-character master keys (Vigenère-style XOR shifting).
+- [x] Support multi-character master keys (Vigenère-style XOR shifting).
 - [ ] Add standalone file encryption (.txt, .png, etc.).
