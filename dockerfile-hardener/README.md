@@ -1,4 +1,5 @@
 # Dockerfile Hardener (GUI)
+![Dockerfile Hardener GUI](screenshot.png)
 
 A lightweight desktop DevSecOps tool built with Python and Tkinter to audit `Dockerfile` configurations for security misconfigurations and automatically generate hardened versions.
 
