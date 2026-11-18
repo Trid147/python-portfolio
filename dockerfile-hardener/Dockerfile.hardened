@@ -1,0 +1,23 @@
+FROM python:latest
+
+# [SECURITY WARNING] Possible hardcoded secret detected below. Injact at runtime instead:
+ENV API_SECRET_KEY="super-secret-production-key-123"
+# [SECURITY WARNING] Possible hardcoded secret detected below. Injact at runtime instead:
+ENV DB_PASSWORD="adminpassword"
+
+WORKDIR /app
+
+COPY requirements.txt .
+
+RUN apt-get update && apt-get install --no-install-recommends -y curl vim netcat
+
+RUN pip install --no-cache-dir -r requirements.txt
+
+COPY . .
+
+EXPOSE 8000
+
+RUN useradd -u 1001 appuser
+USER appuser
+
+CMD ["python", "app.py"]
